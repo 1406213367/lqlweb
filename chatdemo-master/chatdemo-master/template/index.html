@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <link rel="stylesheet" href="/static/css/element.css">
+    <link rel="stylesheet" href="/static/css/chat.css">
+</head>
+<body>
+    <div id="app">
+        <div class="chat-box">
+            <div class="chat-box-top">
+                Chat Demo
+            </div>
+            <div class="chat-box-bottom">
+                <div class="chat-box-bottom-left">
+                    <div class="chat-show-box">
+                        <div v-for="item in messageList" class="chat-message">
+                            <div v-if="item.userName == 'system'" style="text-align: center">
+                                {{item.content}}
+                            </div>
+                            <div v-else style="display: flex">
+                                <div class="user-head">
+                                    <img :src="'/static/image/head/system/'+item.userHead" alt="">
+                                </div>
+                                <div>
+                                    <div class="message-user-name">{{item.userName}}</div>
+                                    <div class="message-content">{{item.content}}</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <el-input type="textarea"
+                              :rows=6
+                              v-model="message"
+                              autocomplete="off"
+                              @keypress.native.enter="sendMessage"
+                    ></el-input>
+                </div>
+                <div class="chat-box-bottom-right">
+                    <div v-for="item in userList"  class="user-info">
+                        <div class="user-list-head">
+                            <img :src="'/static/image/head/system/'+item.userHead" alt="">
+                        </div>
+                        <div class="user-list-name">
+                            {{item.userName}}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
+<script src="/static/js/vue@2.6.11.js"></script>
+<script src="/static/js/element.js"></script>
+<script src="/static/js/axios.min.js"></script>
+<script src="/static/js/jquery.min.js"></script>
+<script>
+    new Vue({
+        el:"#app",
+        data:{
+            message:"",
+            messageList:[],
+            userList:[],
+        },
+        created(){
+            this.connect();
+        },
+        methods:{
+            connect(){
+                let host = "192.168.30.138:9999"
+                let wsServer = 'ws://'+host+'/sendMessage'
+                ws = new WebSocket(wsServer);
+
+                ws.onopen = function(evt) {
+                    console.log("OPEN");
+                }
+
+                let that = this;
+                ws.onmessage = function(evt) {
+                    let jsonData = JSON.parse(evt.data)
+
+                    //用户消息
+                    if(jsonData.action == "userMessage"){
+                        that.showMessage(jsonData.data)
+                    }
+
+                    //系统消息
+                    if(jsonData.action == "systemMessage"){
+                        that.showMessage(jsonData.data);
+                        that.userList = jsonData.data.userList;
+                    }
+
+                };
+
+                ws.onerror = function(evt) {
+                    console.log("ERROR: " + evt.data);
+                };
+            },
+            //发送消息
+            sendMessage(){
+                this.message = this.message.trim();
+
+                if(this.message == ""){
+                    return
+                }
+
+                ws.send(this.message)
+                this.message = "";
+            },
+            showMessage(messageData){
+                this.messageList.push(messageData);
+
+                //滚动条自动下滑
+                setTimeout(function(){
+                    $(".chat-show-box").scrollTop($(".chat-show-box").prop('scrollHeight'));
+                },100)
+            }
+        }
+    })
+</script>
